@@ -11,23 +11,23 @@ export async function initDuckDB(): Promise<void> {
     
     // Use a simpler initialization approach for the MVP
     console.log('DuckDB initialization skipped for MVP');
-    
-    // For now, let's just return without initializing DuckDB
-    // This allows the application UI to work while we resolve WASM issues
-    return;
-    
-    /* Original implementation - commented out until WASM issues are resolved
+  
     // Load the WASM files and worker
     const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
     
     // Select the bundle based on browser support
     const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
     
-    // Instantiate the database
+    const worker_url = URL.createObjectURL(
+      new Blob([`importScripts("${bundle.mainWorker!}");`], {type: 'text/javascript'})
+    );
+
+    // Instantiate the asynchronus version of DuckDB-Wasm
+    const worker = new Worker(worker_url);
     const logger = new duckdb.ConsoleLogger();
-    
-    db = new duckdb.AsyncDuckDB(logger, bundle);
-    await db.instantiate();
+    db = new duckdb.AsyncDuckDB(logger, worker);
+    await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+    URL.revokeObjectURL(worker_url);
     
     // Create connection
     conn = await db.connect();
@@ -36,7 +36,6 @@ export async function initDuckDB(): Promise<void> {
     await createTables();
     
     console.log('DuckDB initialized successfully');
-    */
   } catch (error) {
     console.error('Error initializing DuckDB:', error);
     // Swallow the error for now to allow the application to continue
