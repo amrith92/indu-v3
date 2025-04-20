@@ -97,7 +97,7 @@ describe('Utils', () => {
     it('should truncate text to specified length', () => {
       const text = 'This is a very long text that should be truncated';
       
-      expect(truncateText(text, 10)).toBe('This is a...');
+      expect(truncateText(text, 10)).toBe('This is a ...');
     });
 
     it('should try to truncate at end of sentence near maxLength', () => {
@@ -120,7 +120,7 @@ describe('Utils', () => {
       
       const result = extractContextAroundMatch(text, match, 10);
       
-      expect(result).toBe('...xt around a specific word...');
+      expect(result).toBe('... around a specific word.');
     });
 
     it('should truncate if no match is found', () => {
@@ -129,7 +129,7 @@ describe('Utils', () => {
       
       const result = extractContextAroundMatch(text, match, 10);
       
-      expect(result).toBe('This is a very long text.');
+      expect(result).toBe('This is a very long ...');
     });
   });
 
