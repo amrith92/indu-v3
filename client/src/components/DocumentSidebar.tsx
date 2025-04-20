@@ -17,6 +17,7 @@ export default function DocumentSidebar({ onUploadClick }: DocumentSidebarProps)
     setFilter, 
     clearFilter, 
     stats,
+    addUploadFile,
     addDocument,
   } = useDocumentStore();
 
@@ -98,8 +99,11 @@ export default function DocumentSidebar({ onUploadClick }: DocumentSidebarProps)
         return;
       }
       for (const file of files) {
+        const fileBlob = new Blob([file.content], { type: file.type });
+        const convertedFile = new File([fileBlob], file.name, { type: file.type, lastModified: Date.now() });
+        const id = addUploadFile(convertedFile);
         addDocument({
-          id: file.id,
+          id: id,
           name: file.name,
           type: file.type,
           size: file.size,

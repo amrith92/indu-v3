@@ -16,7 +16,7 @@ interface DocumentState {
   removeDocument: (id: string) => void;
   updateDocument: (id: string, document: Partial<Document>) => void;
   selectDocument: (id: string | null) => void;
-  addUploadFile: (file: File) => void;
+  addUploadFile: (file: File) => string;
   removeUploadFile: (id: string) => void;
   updateUploadFile: (id: string, data: Partial<UploadFile>) => void;
   clearUploadedFiles: () => void;
