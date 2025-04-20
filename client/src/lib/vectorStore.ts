@@ -19,7 +19,35 @@ export async function initVectorStore(): Promise<void> {
   // For now, just clear the in-memory index
   vectorIndex = [];
   
-  // In the future, this would load the persisted HNSW index
+  // Load existing documents from storage
+  try {
+    const documents = await import('./storage').then(module => module.getAllDocuments());
+    
+    // Process each document and add to vector index
+    for (const doc of documents) {
+      if (doc.content?.chunks) {
+        for (const chunk of doc.content.chunks) {
+          // Get embedding from storage if it exists
+          const embedding = await import('./storage').then(module => 
+            module.getEmbedding(chunk.id)
+          );
+          
+          if (embedding) {
+            vectorIndex.push({
+              chunkId: chunk.id,
+              documentId: doc.id,
+              documentName: doc.name,
+              documentType: doc.type,
+              embedding,
+              metadata: chunk.metadata,
+            });
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error initializing vector store:', error);
+  }
 }
 
 export async function addToVectorStore(

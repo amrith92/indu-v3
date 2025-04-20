@@ -59,16 +59,17 @@ describe('vectorStore', () => {
     const mockEmbedding = new Float32Array([0.1, 0.2, 0.3]);
     vi.mocked(languageProcessing.generateEmbeddings).mockResolvedValue(mockEmbedding);
     
-    // Add to vector store
-    await addToVectorStore({
+    // Add to vector store - wrapping in array since function expects array of chunks
+    await addToVectorStore([{
+      id: 'chunk-1',
       documentId: 'doc-1',
-      documentName: 'Test Document',
-      documentType: 'pdf',
-      chunkId: 'chunk-1',
       text: 'Test content',
-      metadata: {},
+      metadata: {
+        startIndex: 0,
+        endIndex: 12
+      },
       embedding: mockEmbedding
-    });
+    }], 'Test Document', 'pdf');
     
     // Check if embedding was saved
     expect(storage.saveEmbedding).toHaveBeenCalledWith('chunk-1', 'doc-1', mockEmbedding);
@@ -88,15 +89,16 @@ describe('vectorStore', () => {
     vi.mocked(languageProcessing.generateEmbeddings).mockResolvedValue(mockEmbedding);
     
     // Add to vector store first
-    await addToVectorStore({
+    await addToVectorStore([{
+      id: 'chunk-1',
       documentId: 'doc-1',
-      documentName: 'Test Document',
-      documentType: 'pdf',
-      chunkId: 'chunk-1',
       text: 'Test content',
-      metadata: {},
+      metadata: {
+        startIndex: 0,
+        endIndex: 12
+      },
       embedding: mockEmbedding
-    });
+    }], 'Test Document', 'pdf');
     
     // Now remove it
     await removeFromVectorStore('doc-1');

@@ -18,7 +18,9 @@ export function formatBytes(bytes: number, decimals = 2): string {
 }
 
 export function getFileExtension(filename: string): string {
-  return filename.slice(((filename.lastIndexOf('.') - 1) >>> 0) + 2).toLowerCase();
+  const lastDotIndex = filename.lastIndexOf('.');
+  if (lastDotIndex === -1) return filename;
+  return filename.slice(lastDotIndex + 1).toLowerCase();
 }
 
 export function getFileTypeIcon(fileType: string): string {
