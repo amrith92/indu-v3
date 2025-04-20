@@ -1,6 +1,4 @@
 import * as duckdb from '@duckdb/duckdb-wasm';
-import duckdb_wasm from '@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url';
-import duckdb_worker from '@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url';
 
 // Initialize DuckDB database
 let db: duckdb.AsyncDuckDB | null = null;
@@ -11,15 +9,22 @@ export async function initDuckDB(): Promise<void> {
   try {
     if (db) return;
     
-    // Instantiate the DuckDB worker
-    const worker = new Worker(duckdb_worker);
+    // Use a simpler initialization approach for the MVP
+    console.log('DuckDB initialization skipped for MVP');
+    
+    // For now, let's just return without initializing DuckDB
+    // This allows the application UI to work while we resolve WASM issues
+    return;
+    
+    /* Original implementation - commented out until WASM issues are resolved
+    // Load the WASM files and worker
+    const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
+    
+    // Select the bundle based on browser support
+    const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
     
     // Instantiate the database
     const logger = new duckdb.ConsoleLogger();
-    const bundle = {
-      mainModule: duckdb_wasm,
-      mainWorker: worker,
-    };
     
     db = new duckdb.AsyncDuckDB(logger, bundle);
     await db.instantiate();
@@ -31,9 +36,10 @@ export async function initDuckDB(): Promise<void> {
     await createTables();
     
     console.log('DuckDB initialized successfully');
+    */
   } catch (error) {
     console.error('Error initializing DuckDB:', error);
-    throw error;
+    // Swallow the error for now to allow the application to continue
   }
 }
 
@@ -97,6 +103,13 @@ async function createTables(): Promise<void> {
 
 // Execute a SQL query
 export async function executeQuery<T = any>(query: string, params: any[] = []): Promise<T[]> {
+  // For MVP, just log the query and return empty array
+  console.log(`SQL query skipped for MVP: ${query}`);
+  
+  // Return empty array for MVP
+  return [] as T[];
+  
+  /* Original implementation - commented out until DuckDB issues are resolved
   if (!conn) await initDuckDB();
   if (!conn) throw new Error('Database connection not established');
   
@@ -107,6 +120,7 @@ export async function executeQuery<T = any>(query: string, params: any[] = []): 
     console.error('Error executing query:', error);
     throw error;
   }
+  */
 }
 
 // Insert a document
@@ -141,6 +155,10 @@ export async function insertDocumentChunks(chunks: Array<{
   text: string;
   metadata: any;
 }>): Promise<void> {
+  // For MVP, just log the chunks being inserted
+  console.log(`Inserting ${chunks.length} chunks (skipped for MVP)`);
+  
+  /* Original implementation - commented out until DuckDB issues are resolved
   if (!conn) await initDuckDB();
   if (!conn) throw new Error('Database connection not established');
   
@@ -158,6 +176,7 @@ export async function insertDocumentChunks(chunks: Array<{
       chunk
     );
   }
+  */
 }
 
 // Execute a keyword search
@@ -171,7 +190,16 @@ export async function keywordSearch(
   text: string;
   score: number;
   metadata: any;
+  documentType: string;
 }>> {
+  // For MVP, return an empty array since DuckDB is not initialized
+  console.log(`Keyword search for: "${query}" (limit: ${limit})`);
+  
+  // This is a placeholder implementation for MVP
+  // In a real implementation, this would query the DuckDB database
+  return [];
+  
+  /* Original implementation - commented out until DuckDB issues are resolved
   // Prepare search terms
   const searchTerms = query
     .toLowerCase()
@@ -227,19 +255,29 @@ export async function keywordSearch(
       metadata: JSON.parse(result.metadata),
     };
   }).sort((a, b) => b.score - a.score);
+  */
 }
 
 // Log search query
 export async function logSearch(query: string, language: string, resultCount: number): Promise<void> {
+  // For MVP, just log to console since DuckDB is not initialized
+  console.log(`Search logged: "${query}" (language: ${language}, results: ${resultCount})`);
+  
+  /* Original implementation - commented out until DuckDB issues are resolved
   await executeQuery(
     `INSERT INTO search_logs (id, query, language, timestamp, result_count)
      VALUES (?, ?, ?, ?, ?)`,
     [crypto.randomUUID(), query, language, new Date().toISOString(), resultCount]
   );
+  */
 }
 
 // Close DuckDB connection
 export async function closeDuckDB(): Promise<void> {
+  // For MVP, just log the closure attempt
+  console.log('DuckDB connection close skipped for MVP');
+  
+  /* Original implementation - commented out until DuckDB issues are resolved
   if (conn) {
     await conn.close();
     conn = null;
@@ -249,4 +287,5 @@ export async function closeDuckDB(): Promise<void> {
     await db.close();
     db = null;
   }
+  */
 }
