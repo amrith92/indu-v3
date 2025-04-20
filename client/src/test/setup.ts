@@ -1,4 +1,4 @@
-import { expect, afterEach, beforeAll, afterAll } from 'vitest';
+import { expect, afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import * as matchers from '@testing-library/jest-dom/matchers';
 import { setupServer } from 'msw/node';
@@ -61,14 +61,14 @@ const originalConsoleWarn = console.warn;
 const originalConsoleLog = console.log;
 
 // Replace console methods with mocked versions that still pass through to original
-console.error = vi.fn((...args) => {
+console.error = vi.fn((...args: any[]) => {
   originalConsoleError(...args);
 });
 
-console.warn = vi.fn((...args) => {
+console.warn = vi.fn((...args: any[]) => {
   originalConsoleWarn(...args);
 });
 
-console.log = vi.fn((...args) => {
+console.log = vi.fn((...args: any[]) => {
   originalConsoleLog(...args);
 });
