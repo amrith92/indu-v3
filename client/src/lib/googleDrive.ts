@@ -4,8 +4,8 @@ import { formatBytes } from './utils';
 import { processFile } from './documentProcessing';
 
 // Google Drive API configuration
-const API_KEY = process.env.GOOGLE_DRIVE_API_KEY;
-const CLIENT_ID = process.env.GOOGLE_DRIVE_CLIENT_ID;
+const API_KEY = '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';
+const CLIENT_ID = '86602488753-pk4d8dmhufsnhot5bvia66c80lpc5vpu.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
 // Google Drive API initialization status

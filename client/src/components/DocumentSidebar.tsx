@@ -16,7 +16,8 @@ export default function DocumentSidebar({ onUploadClick }: DocumentSidebarProps)
     filter, 
     setFilter, 
     clearFilter, 
-    stats 
+    stats,
+    addDocument,
   } = useDocumentStore();
 
   // Filter documents based on search term
@@ -31,9 +32,91 @@ export default function DocumentSidebar({ onUploadClick }: DocumentSidebarProps)
   });
 
   // Connect to Google Drive
-  const handleConnectGoogleDrive = () => {
-    // Will be implemented with Google Drive API
-    alert('Google Drive integration will be available soon!');
+  const handleConnectGoogleDrive = async () => {
+    try {
+      const { authenticateWithGoogle, listDriveFiles } = await import('@/lib/googleDrive');
+      
+      // Authenticate the user with Google
+      const isAuthenticated = await authenticateWithGoogle();
+      if (!isAuthenticated) {
+        alert('Failed to authenticate with Google Drive.');
+        return;
+      }
+
+      // List files from Google Drive and add them to the document store
+      let pageToken: string | undefined = undefined;
+      let allFiles: Array<{
+        id: string;
+        name: string;
+        mimeType: string;
+        size: number;
+        modifiedTime: string;
+      }> = [];
+
+      // Loop through all pages of files
+      do {
+        const { files, nextPageToken } = await listDriveFiles({ pageToken });
+        allFiles = allFiles.concat(files);
+        pageToken = nextPageToken;
+      } while (pageToken);
+
+      // Process and add each file to the document store
+      for (const file of allFiles) {
+        try {
+          documents.push({
+            id: file.id,
+            name: file.name,
+            type: file.mimeType,
+            size: file.size,
+            sizeFormatted: `${(file.size / 1024).toFixed(2)} KB`,
+            createdAt: new Date(file.modifiedTime),
+            source: 'google_drive',
+            content: undefined,
+            metadata: undefined
+          });
+          console.log(`Added document: ${file.name}`);
+        } catch (error) {
+          console.error(`Failed to process file ${file.name}:`, error);
+        }
+      }
+
+      console.log('All Google Drive files have been added to the document store.');
+
+      alert('Google Drive files successfully imported!');
+    } catch (error) {
+      console.error('Error connecting to Google Drive:', error);
+      alert('An error occurred while connecting to Google Drive.');
+    }
+  };
+
+  const handleFileUpload = async () => {
+    try {
+      const { uploadFiles } = await import('@/lib/fileUpload');
+      const files = await uploadFiles();
+      if (!files) {
+        alert('No files selected for upload.');
+        return;
+      }
+      for (const file of files) {
+        addDocument({
+          id: file.id,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          sizeFormatted: `${(file.size / 1024).toFixed(2)} KB`,
+          createdAt: new Date(),
+          source: 'local',
+          content: undefined,
+          metadata: undefined
+        });
+        console.log(`Added document: ${file.name}`); 
+      }
+      console.log('All files have been added to the document store.');
+      alert('Files successfully uploaded!');
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      alert('An error occurred while uploading files.');
+    }
   };
 
   return (
@@ -52,7 +135,7 @@ export default function DocumentSidebar({ onUploadClick }: DocumentSidebarProps)
           </Button>
           <Button 
             variant="outline"
-            onClick={handleConnectGoogleDrive}
+            onClick={handleFileUpload}
             className="bg-white border border-neutral-300 hover:bg-neutral-50 py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors"
           >
             <span className="material-icons text-sm">cloud</span>

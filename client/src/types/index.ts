@@ -5,9 +5,9 @@ export interface Document {
   size: number;
   sizeFormatted: string;
   createdAt: Date;
-  content: DocumentContent;
+  content: DocumentContent | undefined;
   source: 'local' | 'google_drive';
-  metadata: DocumentMetadata;
+  metadata: DocumentMetadata | undefined;
 }
 
 export interface DocumentMetadata {
