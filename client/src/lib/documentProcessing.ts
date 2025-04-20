@@ -45,6 +45,8 @@ export async function processFile(
       chunks,
       (subProgress) => onProgress(60 + subProgress * 0.3)
     );
+
+    console.log('Chunks with embeddings:', chunksWithEmbeddings);
     
     onProgress(90);
     

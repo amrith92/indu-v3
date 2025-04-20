@@ -72,7 +72,6 @@ export async function saveDocument(document: Document): Promise<void> {
     
     // Store document without chunks to reduce size
     const documentToStore = { ...document };
-    delete documentToStore.content.chunks;
     
     const documentRequest = documentsStore.put(documentToStore);
     

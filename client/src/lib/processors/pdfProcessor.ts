@@ -4,8 +4,8 @@ import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 
 // Set worker source
 if (typeof window !== 'undefined' && 'Worker' in window) {
-  const pdfjsVersion = pdfjsLib.version;
-  GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.js`;
+  const pdfjsVersion = '5.0.375'/* || pdfjsLib.version*/;
+  GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.mjs`;
 }
 
 export async function processPdf(

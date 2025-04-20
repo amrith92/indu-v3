@@ -4,6 +4,7 @@ import { getFileTypeIcon } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { processFile } from '@/lib/documentProcessing';
 
 interface DocumentSidebarProps {
   onUploadClick: () => void;
@@ -102,17 +103,10 @@ export default function DocumentSidebar({ onUploadClick }: DocumentSidebarProps)
         const fileBlob = new Blob([file.content], { type: file.type });
         const convertedFile = new File([fileBlob], file.name, { type: file.type, lastModified: Date.now() });
         const id = addUploadFile(convertedFile);
-        addDocument({
-          id: id,
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          sizeFormatted: `${(file.size / 1024).toFixed(2)} KB`,
-          createdAt: new Date(),
-          source: 'local',
-          content: undefined,
-          metadata: undefined
+        const document = await processFile(convertedFile, (progress) => {
+          console.log(`Processing ${file.name}: ${progress}%`);
         });
+        addDocument(document);
         console.log(`Added document: ${file.name}`); 
       }
       console.log('All files have been added to the document store.');
