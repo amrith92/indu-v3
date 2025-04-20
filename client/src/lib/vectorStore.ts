@@ -90,12 +90,6 @@ export async function search(
   try {
     console.log(`Vector search for: "${query}" (limit: ${limit})`);
     
-    // For MVP, return an empty array since we're still dealing with WebAssembly issues
-    // This is a placeholder implementation
-    
-    return [];
-    
-    /* Original implementation - commented out until WebAssembly issues are resolved
     // Generate query embedding
     const queryEmbedding = await generateEmbeddings(query);
     
@@ -121,7 +115,6 @@ export async function search(
     }));
     
     return searchResults;
-    */
   } catch (error) {
     console.error('Error searching vector store:', error);
     return []; // Return empty array instead of throwing error for MVP
