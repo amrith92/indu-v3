@@ -154,10 +154,7 @@ export async function insertDocumentChunks(chunks: Array<{
   text: string;
   metadata: any;
 }>): Promise<void> {
-  // For MVP, just log the chunks being inserted
-  console.log(`Inserting ${chunks.length} chunks (skipped for MVP)`);
   
-  /* Original implementation - commented out until DuckDB issues are resolved
   if (!conn) await initDuckDB();
   if (!conn) throw new Error('Database connection not established');
   
@@ -175,7 +172,6 @@ export async function insertDocumentChunks(chunks: Array<{
       chunk
     );
   }
-  */
 }
 
 // Execute a keyword search
@@ -193,12 +189,6 @@ export async function keywordSearch(
 }>> {
   // For MVP, return an empty array since DuckDB is not initialized
   console.log(`Keyword search for: "${query}" (limit: ${limit})`);
-  
-  // This is a placeholder implementation for MVP
-  // In a real implementation, this would query the DuckDB database
-  return [];
-  
-  /* Original implementation - commented out until DuckDB issues are resolved
   // Prepare search terms
   const searchTerms = query
     .toLowerCase()
@@ -254,7 +244,6 @@ export async function keywordSearch(
       metadata: JSON.parse(result.metadata),
     };
   }).sort((a, b) => b.score - a.score);
-  */
 }
 
 // Log search query
@@ -262,13 +251,11 @@ export async function logSearch(query: string, language: string, resultCount: nu
   // For MVP, just log to console since DuckDB is not initialized
   console.log(`Search logged: "${query}" (language: ${language}, results: ${resultCount})`);
   
-  /* Original implementation - commented out until DuckDB issues are resolved
   await executeQuery(
     `INSERT INTO search_logs (id, query, language, timestamp, result_count)
      VALUES (?, ?, ?, ?, ?)`,
     [crypto.randomUUID(), query, language, new Date().toISOString(), resultCount]
   );
-  */
 }
 
 // Close DuckDB connection
@@ -276,15 +263,13 @@ export async function closeDuckDB(): Promise<void> {
   // For MVP, just log the closure attempt
   console.log('DuckDB connection close skipped for MVP');
   
-  /* Original implementation - commented out until DuckDB issues are resolved
   if (conn) {
     await conn.close();
     conn = null;
   }
   
   if (db) {
-    await db.close();
+    await db.terminate();
     db = null;
   }
-  */
 }
