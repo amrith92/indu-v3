@@ -125,20 +125,21 @@ export default function DocumentSidebar({ onUploadClick }: DocumentSidebarProps)
         {/* Upload Buttons */}
         <div className="flex flex-col gap-2 mb-6">
           <Button 
+            variant={"outline"}
             onClick={onUploadClick}
-            className="bg-primary-600 hover:bg-primary-700 text-white py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors"
+            className="bg-white border border-neutral-300 hover:bg-neutral-50 py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors"
           >
             <span className="material-icons text-sm">upload_file</span>
             <span>Upload Files</span>
           </Button>
-          <Button 
+          {/* <Button 
             variant="outline"
             onClick={handleFileUpload}
             className="bg-white border border-neutral-300 hover:bg-neutral-50 py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors"
           >
             <span className="material-icons text-sm">cloud</span>
             <span>Connect Google Drive</span>
-          </Button>
+          </Button> */}
         </div>
         
         {/* Document Filters */}

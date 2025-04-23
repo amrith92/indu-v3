@@ -195,9 +195,10 @@ export default function UploadModal({ onClose, onProcessStart }: UploadModalProp
               Cancel
             </Button>
             <Button 
+              variant="outline"
               onClick={processFiles}
               disabled={uploadedFiles.length === 0}
-              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded transition-colors disabled:bg-neutral-300 disabled:cursor-not-allowed"
+              className="px-4 py-2 border border-neutral-300 rounded hover:bg-neutral-50 transition-colors"
             >
               Upload & Process
             </Button>

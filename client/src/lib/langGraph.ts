@@ -42,9 +42,8 @@ const nodes: Record<string, Node> = {
     id: 'detectLanguage',
     process: async (context) => {
       try {
-        const detection = await detectLanguage(context.query);
-        context.language = detection.isHinglish ? 'hinglish' : 
-                          detection.isHindi ? 'hindi' : 'english';
+        //const detection = await detectLanguage(context.query);
+        context.language = 'english';
       } catch (error) {
         console.error('Language detection error:', error);
         context.language = 'english'; // Default to English

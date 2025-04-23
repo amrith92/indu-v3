@@ -6,7 +6,6 @@ env.useBrowserCache = true;
 
 // Model configurations
 const EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
-const LANGUAGE_DETECTION_MODEL = 'Xenova/lang-identification-256';
 
 // Initialize models
 let embeddingPipeline: any = null;
@@ -18,14 +17,6 @@ async function initEmbeddingModel() {
     embeddingPipeline = await pipeline('feature-extraction', EMBEDDING_MODEL);
   }
   return embeddingPipeline;
-}
-
-// Initialize the language detection model
-async function initLanguageDetectionModel() {
-  if (!languageDetectionPipeline) {
-    languageDetectionPipeline = await pipeline('text-classification', LANGUAGE_DETECTION_MODEL);
-  }
-  return languageDetectionPipeline;
 }
 
 // Generate embeddings for text
@@ -43,43 +34,6 @@ export async function generateEmbeddings(text: string): Promise<Float32Array> {
     return new Float32Array(result.data);
   } catch (error) {
     console.error('Error generating embeddings:', error);
-    throw error;
-  }
-}
-
-// Detect language of text
-export async function detectLanguage(text: string): Promise<{
-  language: string;
-  score: number;
-  isHindi: boolean;
-  isEnglish: boolean;
-  isHinglish: boolean;
-}> {
-  const pipe = await initLanguageDetectionModel();
-  
-  try {
-    const result = await pipe(text);
-    const { label, score } = result[0];
-    
-    // Detect Hinglish (mixture of Hindi and English)
-    const isHindi = label === 'hi' || label === 'hin';
-    const isEnglish = label === 'en';
-    
-    // A simple heuristic for Hinglish: contains both Hindi and English words
-    // This is a simplification - a proper implementation would need more logic
-    const hindiPattern = /[\u0900-\u097F]/; // Hindi Unicode range
-    const englishPattern = /[a-zA-Z]/;
-    const isHinglish = hindiPattern.test(text) && englishPattern.test(text);
-    
-    return {
-      language: label,
-      score,
-      isHindi,
-      isEnglish,
-      isHinglish,
-    };
-  } catch (error) {
-    console.error('Error detecting language:', error);
     throw error;
   }
 }

@@ -6,6 +6,7 @@ import { processText } from './processors/textProcessor';
 import { saveDocument } from './storage';
 import { formatBytes, getFileExtension } from './utils';
 import { generateEmbeddings } from './languageProcessing';
+import { insertDocument } from './duckdb';
 
 // Main document processing function
 export async function processFile(
@@ -71,6 +72,7 @@ export async function processFile(
     
     // Step 7: Save document to storage
     await saveDocument(document);
+    await insertDocument(document);
     
     onProgress(100);
     

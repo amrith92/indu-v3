@@ -102,24 +102,26 @@ async function createTables(): Promise<void> {
 
 // Execute a SQL query
 export async function executeQuery<T = any>(query: string, params: any[] = []): Promise<T[]> {
-  // For MVP, just log the query and return empty array
-  console.log(`SQL query skipped for MVP: ${query}`);
   
-  // Return empty array for MVP
-  return [] as T[];
-  
-  /* Original implementation - commented out until DuckDB issues are resolved
   if (!conn) await initDuckDB();
   if (!conn) throw new Error('Database connection not established');
   
   try {
-    const result = await conn.query(query, params);
+    let result;
+    if (params.length === 0) {
+      result = await conn.query(query);
+    } else {
+      const substitutedQuery = query.replace(/\?/g, () => {
+        const param = params.shift();
+        return typeof param === 'string' ? `'${param.replace(/'/g, "''")}'` : param;
+      });
+      result = await conn.query(substitutedQuery);
+    }
     return result.toArray() as T[];
   } catch (error) {
     console.error('Error executing query:', error);
     throw error;
   }
-  */
 }
 
 // Insert a document
@@ -131,6 +133,9 @@ export async function insertDocument(document: {
   createdAt: Date;
   source: string;
   metadata: any;
+  content: {
+    chunks: any[];
+  };
 }): Promise<void> {
   await executeQuery(
     `INSERT INTO documents (id, name, type, size, created_at, source, metadata)
@@ -145,6 +150,8 @@ export async function insertDocument(document: {
       JSON.stringify(document.metadata),
     ]
   );
+
+  await insertDocumentChunks(document.content.chunks);
 }
 
 // Insert document chunks
@@ -218,6 +225,9 @@ export async function keywordSearch(
       ${likeConditions}
     LIMIT ?
   `;
+
+  console.log(await executeQuery(`SELECT * FROM documents`, []));
+  console.log(await executeQuery(`SELECT * FROM document_chunks`, []));
   
   const results = await executeQuery(sql, [...likeParams, limit]);
   
@@ -252,8 +262,7 @@ export async function logSearch(query: string, language: string, resultCount: nu
   console.log(`Search logged: "${query}" (language: ${language}, results: ${resultCount})`);
   
   await executeQuery(
-    `INSERT INTO search_logs (id, query, language, timestamp, result_count)
-     VALUES (?, ?, ?, ?, ?)`,
+    `INSERT INTO search_logs VALUES (?, ?, ?, ?, ?)`,
     [crypto.randomUUID(), query, language, new Date().toISOString(), resultCount]
   );
 }
