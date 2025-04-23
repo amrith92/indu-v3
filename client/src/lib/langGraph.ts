@@ -160,6 +160,7 @@ export async function executeSearchGraph(
 
   let currentNodeId = "start";
   const visitedNodes = new Set<string>();
+  const branchPromises: Promise<Context>[] = [];
 
   // Execute the graph
   while (currentNodeId) {
@@ -178,45 +179,19 @@ export async function executeSearchGraph(
       // Determine next node
       let nextNodeId: string | null = null;
 
-      if (currentNodeId === "waitForDualSearch") {
-        // Special case for wait node - only proceed when both searches complete
-        if (context.isDualSearch) {
-          nextNodeId = "end";
-        } else {
-          // Wait for other branch to complete
-          break;
-        }
-      } else if (node.next.length === 1) {
+      if (node.next.length === 1) {
         // Single next node
         nextNodeId = node.next[0];
       } else if (node.next.length > 1) {
         // Multiple branches - execute all branches in parallel
-
-        for (const branchNodeId of node.next) {
+        const branchExecutions = node.next.map(branchNodeId => {
           if (!visitedNodes.has(branchNodeId)) {
-            // Start a new execution branch
-            executeNodeBranch(branchNodeId, { ...context }).then(
-              (branchContext) => {
-                // Merge results back to main context
-                context = {
-                  ...context,
-                  ...branchContext,
-                };
-
-                // Continue graph execution from wait node
-                if (
-                  visitedNodes.has("executeVectorSearch") &&
-                  visitedNodes.has("executeKeywordSearch") &&
-                  !visitedNodes.has("waitForDualSearch")
-                ) {
-                  executeNodeBranch("waitForDualSearch", context);
-                }
-              },
-            );
+            return executeNodeBranch(branchNodeId, { ...context });
           }
-        }
-
-        // Break the main execution since we've spawned parallel branches
+          return null;
+        }).filter((p): p is Promise<Context> => p !== null);
+        
+        branchPromises.push(...branchExecutions);
         break;
       }
 
@@ -224,21 +199,40 @@ export async function executeSearchGraph(
     } catch (error) {
       console.error(`Error executing node ${currentNodeId}:`, error);
       context.errorMessage = `Error in ${currentNodeId}: ${error}`;
-      currentNodeId = "end";
+      break;
     }
   }
 
-  // If execution finished with combined results, return them
-  if (context.combinedResults && context.combinedResults.length > 0) {
+  // Wait for all parallel branches to complete
+  if (branchPromises.length > 0) {
+    const branchResults = await Promise.all(branchPromises);
+    
+    // Merge results from all branches
+    for (const branchContext of branchResults) {
+      context = {
+        ...context,
+        ...branchContext,
+        vectorResults: [...context.vectorResults, ...branchContext.vectorResults],
+        keywordResults: [...context.keywordResults, ...branchContext.keywordResults],
+      };
+    }
+
+    // Execute final wait node to combine results
+    const waitNode = nodes["waitForDualSearch"];
+    if (waitNode) {
+      context = await waitNode.process(context);
+    }
+  }
+
+  // Return results in priority order
+  if (context.combinedResults?.length > 0) {
     return context.combinedResults;
   }
 
-  // Otherwise, return vector results if available
-  if (context.vectorResults && context.vectorResults.length > 0) {
+  if (context.vectorResults?.length > 0) {
     return context.vectorResults;
   }
 
-  // Fall back to keyword results
   return context.keywordResults || [];
 }
 
