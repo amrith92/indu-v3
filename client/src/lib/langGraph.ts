@@ -79,12 +79,27 @@ const nodes: Record<string, Node> = {
     id: "executeVectorSearch",
     process: async (context) => {
       try {
+        // Perform vector search
         context.vectorResults = await vectorSearch(context.query, 20);
-        console.log("Vector results:", context.vectorResults);
+        
+        // Perform knowledge graph search
+        const graphResults = await import('./knowledgeGraph')
+          .then(module => module.searchGraph(context.query));
+          
+        // Combine results with vector search
+        context.vectorResults = context.vectorResults.map(result => {
+          const graphScore = graphResults.find(gr => gr.chunkId === result.chunkId)?.score || 0;
+          return {
+            ...result,
+            score: (result.score * 0.7) + (graphScore * 0.3) // Weighted combination
+          };
+        });
+        
+        console.log("Combined results:", context.vectorResults);
       } catch (error) {
-        console.error("Vector search error:", error);
+        console.error("Search error:", error);
         context.vectorResults = [];
-        context.errorMessage = "Vector search failed";
+        context.errorMessage = "Search failed";
       }
       return context;
     },

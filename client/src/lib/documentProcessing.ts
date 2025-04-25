@@ -15,14 +15,14 @@ export async function processFile(
 ): Promise<Document> {
   try {
     onProgress(10);
-    
+
     // Step 1: Read the file
     const arrayBuffer = await readFileAsArrayBuffer(file);
     onProgress(20);
-    
+
     // Step 2: Determine file type and choose processor
     const fileType = getFileExtension(file.name);
-    
+
     // Step 3: Extract text and metadata based on file type
     const { text, metadata } = await extractTextAndMetadata(
       arrayBuffer, 
@@ -30,17 +30,17 @@ export async function processFile(
       file.name,
       (subProgress) => onProgress(20 + subProgress * 0.3)
     );
-    
+
     onProgress(50);
-    
+
     // Step 4: Split text into chunks
     const chunks = await splitIntoChunks(text, {
       documentId: crypto.randomUUID(),
       fileName: file.name,
     });
-    
+
     onProgress(60);
-    
+
     // Step 5: Generate embeddings for chunks
     const chunksWithEmbeddings = await processChunksWithEmbeddings(
       chunks,
@@ -48,9 +48,9 @@ export async function processFile(
     );
 
     console.log('Chunks with embeddings:', chunksWithEmbeddings);
-    
+
     onProgress(90);
-    
+
     // Step 6: Create document object
     const document: Document = {
       id: chunks[0].documentId,
@@ -69,13 +69,16 @@ export async function processFile(
         mimeType: file.type,
       },
     };
-    
-    // Step 7: Save document to storage
+
+    // Step 7: Build knowledge graph
+    await import('./knowledgeGraph').then(module => module.addDocumentToGraph(document));
+
+    // Step 8: Save document to storage
     await saveDocument(document);
     await insertDocument(document);
-    
+
     onProgress(100);
-    
+
     return document;
   } catch (error) {
     console.error('Error processing file:', error);
@@ -87,15 +90,15 @@ export async function processFile(
 function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
+
     reader.onload = () => {
       resolve(reader.result as ArrayBuffer);
     };
-    
+
     reader.onerror = () => {
       reject(new Error('Error reading file'));
     };
-    
+
     reader.readAsArrayBuffer(file);
   });
 }
@@ -136,23 +139,23 @@ async function splitIntoChunks(
   options: { documentId: string; fileName: string }
 ): Promise<DocumentChunk[]> {
   const { documentId, fileName } = options;
-  
+
   // Simple chunking strategy: split by paragraphs then combine
   // If a paragraph is too long, split it further
   const MAX_CHUNK_SIZE = 1000; // characters
   const MIN_CHUNK_SIZE = 200; // characters
-  
+
   const paragraphs = text.split(/\n\s*\n/);
   const chunks: DocumentChunk[] = [];
-  
+
   let currentChunk = '';
   let startIndex = 0;
   let paragraph = 1;
-  
+
   for (const p of paragraphs) {
     const trimmedP = p.trim();
     if (!trimmedP) continue;
-    
+
     // If this paragraph is very large, split it further
     if (trimmedP.length > MAX_CHUNK_SIZE) {
       // First, add existing chunk if needed
@@ -167,16 +170,16 @@ async function splitIntoChunks(
             paragraph: paragraph - 1,
           },
         });
-        
+
         currentChunk = '';
       }
-      
+
       // Now split the large paragraph
       let sentenceStart = 0;
       const sentences = trimmedP.match(/[^.!?]+[.!?]+/g) || [trimmedP];
-      
+
       let sentenceChunk = '';
-      
+
       for (const sentence of sentences) {
         if (sentenceChunk.length + sentence.length > MAX_CHUNK_SIZE) {
           chunks.push({
@@ -189,14 +192,14 @@ async function splitIntoChunks(
               paragraph,
             },
           });
-          
+
           sentenceStart += sentenceChunk.length;
           sentenceChunk = sentence;
         } else {
           sentenceChunk += sentence;
         }
       }
-      
+
       // Add any remaining sentence chunk
       if (sentenceChunk) {
         chunks.push({
@@ -224,7 +227,7 @@ async function splitIntoChunks(
             paragraph: paragraph - 1,
           },
         });
-        
+
         currentChunk = trimmedP;
         startIndex = text.indexOf(trimmedP);
       } else if (currentChunk.length + trimmedP.length < MIN_CHUNK_SIZE) {
@@ -235,7 +238,7 @@ async function splitIntoChunks(
         // Chunk would be a good size, add this paragraph
         currentChunk = currentChunk ? `${currentChunk}\n\n${trimmedP}` : trimmedP;
         if (!currentChunk) startIndex = text.indexOf(trimmedP);
-        
+
         chunks.push({
           id: crypto.randomUUID(),
           documentId,
@@ -246,14 +249,14 @@ async function splitIntoChunks(
             paragraph,
           },
         });
-        
+
         currentChunk = '';
       }
     }
-    
+
     paragraph++;
   }
-  
+
   // Add the last chunk if there is one
   if (currentChunk) {
     chunks.push({
@@ -267,7 +270,7 @@ async function splitIntoChunks(
       },
     });
   }
-  
+
   return chunks;
 }
 
@@ -278,19 +281,19 @@ async function processChunksWithEmbeddings(
 ): Promise<DocumentChunk[]> {
   const total = chunks.length;
   const processed = [];
-  
+
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
     try {
       // Generate embedding for chunk
       const embedding = await generateEmbeddings(chunk.text);
-      
+
       // Add embedding to chunk
       const processedChunk = {
         ...chunk,
         embedding,
       };
-      
+
       processed.push(processedChunk);
       onProgress((i + 1) / total * 100);
     } catch (error) {
@@ -299,6 +302,6 @@ async function processChunksWithEmbeddings(
       onProgress((i + 1) / total * 100);
     }
   }
-  
+
   return processed;
 }
