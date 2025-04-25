@@ -23,21 +23,33 @@ export async function processFile(
     // Step 2: Determine file type and choose processor
     const fileType = getFileExtension(file.name);
 
-    // Step 3: Extract text and metadata based on file type
+    // Step 3: Extract text, layout, and metadata based on file type
     const { text, metadata } = await extractTextAndMetadata(
       arrayBuffer, 
       fileType, 
       file.name,
-      (subProgress) => onProgress(20 + subProgress * 0.3)
+      (subProgress) => onProgress(20 + subProgress * 0.2)
     );
+
+    // Process layout if document contains images
+    let layoutChunks = [];
+    if (metadata.hasImages) {
+      layoutChunks = await layoutProcessor.processDocument(arrayBuffer);
+      onProgress(40);
+    }
 
     onProgress(50);
 
-    // Step 4: Split text into chunks
-    const chunks = await splitIntoChunks(text, {
+    // Step 4: Split text into chunks and merge with layout chunks
+    const textChunks = await splitIntoChunks(text, {
       documentId: crypto.randomUUID(),
       fileName: file.name,
     });
+    
+    const chunks = [...textChunks, ...layoutChunks.map(chunk => ({
+      ...chunk,
+      documentId: textChunks[0].documentId
+    }))];
 
     onProgress(60);
 
