@@ -4,13 +4,13 @@ import * as duckdb from "@duckdb/duckdb-wasm";
 let db: duckdb.AsyncDuckDB | null = null;
 let conn: duckdb.AsyncDuckDBConnection | null = null;
 
-// Initialize DuckDB
+// Initialize DuckDB with sharded storage support
 export async function initDuckDB(): Promise<void> {
   try {
     if (db) return;
 
-    // Use a simpler initialization approach for the MVP
-    console.log("DuckDB initialization skipped for MVP");
+    const shardManager = new ShardedStorageManager();
+    await shardManager.initialize();
 
     // Load the WASM files and worker
     const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
