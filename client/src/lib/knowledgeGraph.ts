@@ -1,8 +1,6 @@
 
-import { init, Kuzu } from '@kuzudb/wasm';
+import kuzu from 'kuzu-wasm';
 import { Document, DocumentChunk } from '@/types';
-
-let kuzu: Kuzu | null = null;
 
 // Initialize KuzuDB
 export async function initKnowledgeGraph() {
