@@ -1,14 +1,10 @@
 
-import { Kuzu, init } from 'kuzu-wasm';
+import kuzu from 'kuzu-wasm';
 import { Document } from '@/types';
-
-let kuzu: Kuzu | null = null;
 
 // Initialize KuzuDB
 export async function initKnowledgeGraph() {
   if (!kuzu) {
-    await init();
-    kuzu = new Kuzu();
     
     try {
       // Create schema
