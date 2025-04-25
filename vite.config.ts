@@ -18,6 +18,19 @@ export default defineConfig({
         ]
       : []),
   ],
+  optimizeDeps: {
+    exclude: ['kuzu-wasm']
+  },
+  build: {
+    rollupOptions: {
+      external: ['kuzu-wasm']
+    }
+  },
+  server: {
+    fs: {
+      allow: ['./node_modules/kuzu-wasm/']
+    }
+  },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
