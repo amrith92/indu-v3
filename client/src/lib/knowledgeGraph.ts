@@ -1,14 +1,32 @@
+import kuzu from "kuzu-wasm";
+import { pipeline } from "@xenova/transformers";
+import { Document } from "@/types";
 
-import kuzu from 'kuzu-wasm';
-import { Document } from '@/types';
+let db: any = null;
+let connection: any = null;
+let nerPipeline: any = null;
 
 // Initialize KuzuDB
 export async function initKnowledgeGraph() {
-  if (!kuzu) {
-    
+  if (!nerPipeline) {
+    nerPipeline = await pipeline(
+      "token-classification",
+      "Xenova/bert-base-NER",
+    );
+    console.log("NER pipeline loaded.");
+  }
+
+  if (!db || !connection) {
+    await kuzu.FS.mkdir("/database");
+    await kuzu.FS.mountIdbfs("/database");
+    console.log("IDBFS mounted.");
+
+    db = new kuzu.Database("/database");
+    connection = new kuzu.Connection(db);
+
     try {
       // Create schema
-      await kuzu.run(`
+      await connection.query(`
         CREATE NODE TABLE IF NOT EXISTS Entity (
           id STRING PRIMARY KEY,
           type STRING,
@@ -16,92 +34,98 @@ export async function initKnowledgeGraph() {
           documentId STRING,
           chunkId STRING
         )`);
-      
-      await kuzu.run(`
+
+      await connection.query(`
         CREATE REL TABLE IF NOT EXISTS Relationship (
           FROM Entity TO Entity,
           type STRING,
-          weight FLOAT32
+          weight DOUBLE
         )`);
     } catch (error) {
-      console.error('Error initializing KuzuDB schema:', error);
+      console.error("Error initializing KuzuDB schema:", error);
       throw error;
     }
   }
-  return kuzu;
 }
 
 // Extract entities from text using transformers.js
-async function extractEntities(text: string): Promise<Array<{type: string, name: string}>> {
-  const pipeline = await import('@xenova/transformers').then(m => 
-    m.pipeline('token-classification', 'Xenova/bert-base-NER')
-  );
-  
-  const result = await pipeline(text);
+async function extractEntities(
+  text: string,
+): Promise<Array<{ type: string; name: string }>> {
+  const result = await nerPipeline(text);
   return result.map((entity: any) => ({
     type: entity.entity_group,
-    name: entity.word
+    name: entity.word,
   }));
 }
 
 // Add document to knowledge graph
 export async function addDocumentToGraph(document: Document) {
-  const db = await initKnowledgeGraph();
-  
+  await initKnowledgeGraph();
+
   for (const chunk of document.content.chunks) {
     try {
       // Extract entities
       const entities = await extractEntities(chunk.text);
-      
+
       // Add entities to graph
       for (const entity of entities) {
         const entityId = `${entity.name}-${crypto.randomUUID()}`;
-        await db.run(`
-          INSERT INTO Entity (id, type, name, documentId, chunkId)
-          VALUES (?, ?, ?, ?, ?)
-        `, [entityId, entity.type, entity.name, document.id, chunk.id]);
+        await connection.query(
+          `
+          CREATE (e:Entity {id: '${entityId}', type: '${entity.type}', name: '${document.name}', documentId: '${document.id}', chunkId: '${chunk.id}'});
+        `,
+        );
       }
-      
+
       // Create relationships between co-occurring entities
       for (let i = 0; i < entities.length; i++) {
         for (let j = i + 1; j < entities.length; j++) {
-          await db.run(`
+          await connection.query(
+            `
             MATCH (e1:Entity), (e2:Entity)
-            WHERE e1.name = ? AND e2.name = ? AND e1.chunkId = ? AND e2.chunkId = ?
-            CREATE (e1)-[r:CO_OCCURS {type: 'co_occurs', weight: 1.0}]->(e2)
-          `, [entities[i].name, entities[j].name, chunk.id, chunk.id]);
+            WHERE e1.name = '${entities[i].name}' AND e2.name = '${entities[j].name}' AND e1.chunkId = '${chunk.id}' AND e2.chunkId = '${chunk.id}'
+            WITH e1, e2
+            CREATE (e1)-[r:Relationship {type: 'co_occurs', weight: 1.0}]->(e2)
+          `,
+          );
         }
       }
     } catch (error) {
-      console.error('Error processing document chunk:', error);
+      console.error("Error processing document chunk:", error);
       throw error;
     }
   }
 }
 
 // Search knowledge graph
-export async function searchGraph(query: string): Promise<Array<{chunkId: string, score: number}>> {
-  const db = await initKnowledgeGraph();
-  
+export async function searchGraph(
+  query: string,
+): Promise<Array<{ chunkId: string; score: number }>> {
+  await initKnowledgeGraph();
+
   try {
     // Extract entities from query
     const queryEntities = await extractEntities(query);
-    
+
     // Find relevant chunks through entity relationships
-    const results = await db.run(`
-      MATCH (e:Entity)-[r:CO_OCCURS*1..2]-(related:Entity)
+    const results = await connection.query(
+      `
+      MATCH (e:Entity)-[r:Relationship*1..2]-(related:Entity)
       WHERE e.name IN $names
       RETURN related.chunkId as chunkId, COUNT(*) as relevance
       ORDER BY relevance DESC
       LIMIT 20
-    `, { names: queryEntities.map(e => e.name) });
-    
+    `,
+      { names: queryEntities.map((e) => e.name) },
+    );
+
     return results.map((row: any) => ({
       chunkId: row.chunkId,
-      score: row.relevance / queryEntities.length
+      score: row.relevance / queryEntities.length,
     }));
   } catch (error) {
-    console.error('Error searching knowledge graph:', error);
+    console.error("Error searching knowledge graph:", error);
     throw error;
   }
 }

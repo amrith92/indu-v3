@@ -1,4 +1,5 @@
 import * as duckdb from "@duckdb/duckdb-wasm";
+import { ShardedStorageManager } from "./shardedStorage";
 
 // Initialize DuckDB database
 let db: duckdb.AsyncDuckDB | null = null;
