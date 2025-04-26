@@ -3,14 +3,20 @@ import { pipeline } from '@xenova/transformers';
 import sharp from 'sharp';
 import { DocumentChunk } from '@/types';
 
+// Initialize model at module level
+const modelPromise = pipeline('document-question-answering', 'microsoft/layoutlm-base-uncased');
+let modelInstance: any = null;
+
 export class LayoutProcessor {
-  private model: any;
-  
   async initialize() {
-    this.model = await pipeline('document-question-answering', 'microsoft/layoutlm-base-uncased');
+    if (!modelInstance) {
+      modelInstance = await modelPromise;
+    }
   }
 
   async processDocument(imageBuffer: ArrayBuffer): Promise<DocumentChunk[]> {
+    await this.initialize();
+    
     // Convert buffer to image
     const image = sharp(Buffer.from(imageBuffer));
     
@@ -18,7 +24,7 @@ export class LayoutProcessor {
     const metadata = await image.metadata();
     
     // Process with LayoutLM
-    const result = await this.model({
+    const result = await modelInstance({
       image: imageBuffer,
       question: 'What is the content of this document?'
     });
