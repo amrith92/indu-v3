@@ -51,7 +51,7 @@ export async function initKnowledgeGraph() {
 async function extractEntities(
   text: string,
 ): Promise<Array<{ type: string; name: string }>> {
-  const result = await nerPipeline(text);
+  const result = await nerPipelineInstance(text);
   return result.map((entity: any) => ({
     type: entity.entity_group,
     name: entity.word,

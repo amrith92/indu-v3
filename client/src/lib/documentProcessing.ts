@@ -1,47 +1,51 @@
-import { Document, DocumentChunk, DocumentMetadata } from '@/types';
-import { processDocx } from './processors/docxProcessor';
-import { processPdf } from './processors/pdfProcessor';
-import { processXlsx } from './processors/xlsxProcessor';
-import { processText } from './processors/textProcessor';
-import { saveDocument } from './storage';
-import { formatBytes, getFileExtension } from './utils';
-import { generateEmbeddings } from './languageProcessing';
-import { layoutProcessor } from './processors/layoutProcessor';
-import { insertDocument } from './duckdb';
+import { Document, DocumentChunk, DocumentMetadata } from "@/types";
+import { processDocx } from "./processors/docxProcessor";
+import { processPdf } from "./processors/pdfProcessor";
+import { processXlsx } from "./processors/xlsxProcessor";
+import { processText } from "./processors/textProcessor";
+import { saveDocument } from "./storage";
+import { formatBytes, getFileExtension } from "./utils";
+import { generateEmbeddings } from "./languageProcessing";
+import { layoutProcessor } from "./processors/layoutProcessor";
+import { insertDocument } from "./duckdb";
 
 // Document processing worker
 let worker: Worker | null = null;
 
 function getWorker() {
   if (!worker) {
-    worker = new Worker(new URL('../workers/documentWorker.ts', import.meta.url), { type: 'module' });
+    worker = new Worker(
+      new URL("../workers/documentWorker.ts", import.meta.url),
+      { type: "module" },
+    );
   }
   return worker;
 }
 
 // Process document using worker
-async function processDocumentWithWorker(chunks: DocumentChunk[]): Promise<DocumentChunk[]> {
+async function processDocumentWithWorker(
+  chunks: DocumentChunk[],
+): Promise<DocumentChunk[]> {
   return new Promise((resolve, reject) => {
     const worker = getWorker();
 
     worker.onmessage = (e) => {
       const { type, payload } = e.data;
-      if (type === 'PROCESSING_COMPLETE') {
+      if (type === "PROCESSING_COMPLETE") {
         resolve(payload);
-      } else if (type === 'PROCESSING_ERROR') {
+      } else if (type === "PROCESSING_ERROR") {
         reject(new Error(payload));
       }
     };
 
-    worker.postMessage({ type: 'PROCESS_DOCUMENT', payload: { chunks } });
+    worker.postMessage({ type: "PROCESS_DOCUMENT", payload: { chunks } });
   });
 }
-
 
 // Main document processing function
 export async function processFile(
   file: File,
-  onProgress: (progress: number) => void
+  onProgress: (progress: number) => void,
 ): Promise<Document> {
   try {
     onProgress(10);
@@ -55,16 +59,16 @@ export async function processFile(
 
     // Step 3: Extract text, layout, and metadata based on file type
     const { text, metadata } = await extractTextAndMetadata(
-      arrayBuffer, 
-      fileType, 
+      arrayBuffer,
+      fileType,
       file.name,
-      (subProgress) => onProgress(20 + subProgress * 0.2)
+      (subProgress) => onProgress(20 + subProgress * 0.2),
     );
 
     // Process layout if document contains images
-    let layoutChunks = [];
-    layoutChunks = await layoutProcessor.processDocument(arrayBuffer);
-    onProgress(40);
+    let layoutChunks: Array<DocumentChunk> = [];
+    // layoutChunks = await layoutProcessor.processDocument(arrayBuffer);
+    // onProgress(40);
 
     onProgress(50);
 
@@ -74,18 +78,20 @@ export async function processFile(
       fileName: file.name,
     });
 
-    const chunks = [...textChunks, ...layoutChunks.map(chunk => ({
-      ...chunk,
-      documentId: textChunks[0].documentId
-    }))];
+    const chunks = [
+      ...textChunks,
+      ...layoutChunks.map((chunk) => ({
+        ...chunk,
+        documentId: textChunks[0].documentId,
+      })),
+    ];
 
     onProgress(60);
 
     // Step 5: Generate embeddings for chunks using worker
     const chunksWithEmbeddings = await processDocumentWithWorker(chunks);
 
-
-    console.log('Chunks with embeddings:', chunksWithEmbeddings);
+    console.log("Chunks with embeddings:", chunksWithEmbeddings);
 
     onProgress(90);
 
@@ -101,7 +107,7 @@ export async function processFile(
         fullText: text,
         chunks: chunksWithEmbeddings,
       },
-      source: 'local',
+      source: "local",
       metadata: {
         ...metadata,
         mimeType: file.type,
@@ -109,7 +115,9 @@ export async function processFile(
     };
 
     // Step 7: Build knowledge graph
-    await import('./knowledgeGraph').then(module => module.addDocumentToGraph(document));
+    await import("./knowledgeGraph").then((module) =>
+      module.addDocumentToGraph(document),
+    );
 
     // Step 8: Save document to storage
     await saveDocument(document);
@@ -119,7 +127,7 @@ export async function processFile(
 
     return document;
   } catch (error) {
-    console.error('Error processing file:', error);
+    console.error("Error processing file:", error);
     throw error;
   }
 }
@@ -134,7 +142,7 @@ function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
     };
 
     reader.onerror = () => {
-      reject(new Error('Error reading file'));
+      reject(new Error("Error reading file"));
     };
 
     reader.readAsArrayBuffer(file);
@@ -146,20 +154,20 @@ async function extractTextAndMetadata(
   buffer: ArrayBuffer,
   fileType: string,
   fileName: string,
-  onProgress: (progress: number) => void
+  onProgress: (progress: number) => void,
 ): Promise<{ text: string; metadata: DocumentMetadata }> {
   switch (fileType.toLowerCase()) {
-    case 'pdf':
+    case "pdf":
       return processPdf(buffer, onProgress);
-    case 'docx':
-    case 'doc':
+    case "docx":
+    case "doc":
       return processDocx(buffer, onProgress);
-    case 'xlsx':
-    case 'xls':
+    case "xlsx":
+    case "xls":
       return processXlsx(buffer, onProgress);
-    case 'txt':
-    case 'md':
-    case 'csv':
+    case "txt":
+    case "md":
+    case "csv":
       return processText(buffer, onProgress);
     default:
       try {
@@ -174,7 +182,7 @@ async function extractTextAndMetadata(
 // Split text into chunks
 async function splitIntoChunks(
   text: string,
-  options: { documentId: string; fileName: string }
+  options: { documentId: string; fileName: string },
 ): Promise<DocumentChunk[]> {
   const { documentId, fileName } = options;
 
@@ -186,7 +194,7 @@ async function splitIntoChunks(
   const paragraphs = text.split(/\n\s*\n/);
   const chunks: DocumentChunk[] = [];
 
-  let currentChunk = '';
+  let currentChunk = "";
   let startIndex = 0;
   let paragraph = 1;
 
@@ -209,14 +217,14 @@ async function splitIntoChunks(
           },
         });
 
-        currentChunk = '';
+        currentChunk = "";
       }
 
       // Now split the large paragraph
       let sentenceStart = 0;
       const sentences = trimmedP.match(/[^.!?]+[.!?]+/g) || [trimmedP];
 
-      let sentenceChunk = '';
+      let sentenceChunk = "";
 
       for (const sentence of sentences) {
         if (sentenceChunk.length + sentence.length > MAX_CHUNK_SIZE) {
@@ -270,11 +278,15 @@ async function splitIntoChunks(
         startIndex = text.indexOf(trimmedP);
       } else if (currentChunk.length + trimmedP.length < MIN_CHUNK_SIZE) {
         // Chunk is still small, add to it
-        currentChunk = currentChunk ? `${currentChunk}\n\n${trimmedP}` : trimmedP;
+        currentChunk = currentChunk
+          ? `${currentChunk}\n\n${trimmedP}`
+          : trimmedP;
         if (!currentChunk) startIndex = text.indexOf(trimmedP);
       } else {
         // Chunk would be a good size, add this paragraph
-        currentChunk = currentChunk ? `${currentChunk}\n\n${trimmedP}` : trimmedP;
+        currentChunk = currentChunk
+          ? `${currentChunk}\n\n${trimmedP}`
+          : trimmedP;
         if (!currentChunk) startIndex = text.indexOf(trimmedP);
 
         chunks.push({
@@ -288,7 +300,7 @@ async function splitIntoChunks(
           },
         });
 
-        currentChunk = '';
+        currentChunk = "";
       }
     }
 
@@ -315,7 +327,7 @@ async function splitIntoChunks(
 // Process chunks with embeddings -  This function is now largely handled by the worker
 async function processChunksWithEmbeddings(
   chunks: DocumentChunk[],
-  onProgress: (progress: number) => void
+  onProgress: (progress: number) => void,
 ): Promise<DocumentChunk[]> {
   const total = chunks.length;
   const processed = [];
@@ -333,11 +345,11 @@ async function processChunksWithEmbeddings(
       };
 
       processed.push(processedChunk);
-      onProgress((i + 1) / total * 100);
+      onProgress(((i + 1) / total) * 100);
     } catch (error) {
-      console.error('Error generating embedding for chunk:', error);
+      console.error("Error generating embedding for chunk:", error);
       processed.push(chunk); // Still add chunk without embedding
-      onProgress((i + 1) / total * 100);
+      onProgress(((i + 1) / total) * 100);
     }
   }
 
