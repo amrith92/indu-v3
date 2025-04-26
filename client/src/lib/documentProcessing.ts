@@ -28,17 +28,31 @@ async function processDocumentWithWorker(
 ): Promise<DocumentChunk[]> {
   return new Promise((resolve, reject) => {
     const worker = getWorker();
+    const cleanupListener = () => {
+      worker.onmessage = null;
+      worker.onerror = null;
+    };
+
+    worker.onerror = (error) => {
+      cleanupListener();
+      reject(error);
+    };
 
     worker.onmessage = (e) => {
       const { type, payload } = e.data;
       if (type === "PROCESSING_COMPLETE") {
+        cleanupListener();
         resolve(payload);
       } else if (type === "PROCESSING_ERROR") {
+        cleanupListener();
         reject(new Error(payload));
       }
     };
 
-    worker.postMessage({ type: "PROCESS_DOCUMENT", payload: { chunks } });
+    // Ensure listeners are registered before posting message
+    setTimeout(() => {
+      worker.postMessage({ type: "PROCESS_DOCUMENT", payload: { chunks } });
+    }, 0);
   });
 }
 
