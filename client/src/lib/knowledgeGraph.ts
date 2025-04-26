@@ -4,15 +4,14 @@ import { Document } from "@/types";
 
 let db: any = null;
 let connection: any = null;
-let nerPipeline: any = null;
+// Initialize NER pipeline at module level
+const nerPipeline = pipeline("token-classification", "Xenova/bert-base-NER");
+let nerPipelineInstance: any = null;
 
 // Initialize KuzuDB
 export async function initKnowledgeGraph() {
-  if (!nerPipeline) {
-    nerPipeline = await pipeline(
-      "token-classification",
-      "Xenova/bert-base-NER",
-    );
+  if (!nerPipelineInstance) {
+    nerPipelineInstance = await nerPipeline;
     console.log("NER pipeline loaded.");
   }
 

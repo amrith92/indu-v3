@@ -2,19 +2,22 @@
 import { Document, DocumentChunk } from '@/types';
 import { pipeline } from '@xenova/transformers';
 
-let nerPipeline: any = null;
+// Initialize NER pipeline at module level
+const nerPipeline = pipeline('token-classification', 'Xenova/bert-base-NER');
+let nerPipelineInstance: any = null;
 
 // Initialize NER pipeline
 async function initNER() {
-  if (!nerPipeline) {
-    nerPipeline = await pipeline('token-classification', 'Xenova/bert-base-NER');
+  if (!nerPipelineInstance) {
+    nerPipelineInstance = await nerPipeline;
   }
+  return nerPipelineInstance;
 }
 
 // Extract entities from text
 async function extractEntities(text: string) {
-  await initNER();
-  const result = await nerPipeline(text);
+  const pipeline = await initNER();
+  const result = await pipeline(text);
   return result.map((entity: any) => ({
     type: entity.entity_group,
     name: entity.word
