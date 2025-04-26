@@ -52,6 +52,7 @@ async function extractEntities(
   text: string,
 ): Promise<Array<{ type: string; name: string }>> {
   const result = await nerPipelineInstance(text);
+  console.log("Extracted entities transformers:", result);
   return result.map((entity: any) => ({
     type: entity.entity_group,
     name: entity.word,
@@ -66,6 +67,8 @@ export async function addDocumentToGraph(document: Document) {
     try {
       // Extract entities
       const entities = await extractEntities(chunk.text);
+
+      console.log("Extracted entities:", entities);
 
       // Add entities to graph
       for (const entity of entities) {
