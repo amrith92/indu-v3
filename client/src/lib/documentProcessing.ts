@@ -8,6 +8,35 @@ import { formatBytes, getFileExtension } from './utils';
 import { generateEmbeddings } from './languageProcessing';
 import { insertDocument } from './duckdb';
 
+// Document processing worker
+let worker: Worker | null = null;
+
+function getWorker() {
+  if (!worker) {
+    worker = new Worker(new URL('../workers/documentWorker.ts', import.meta.url), { type: 'module' });
+  }
+  return worker;
+}
+
+// Process document using worker
+async function processDocumentWithWorker(chunks: DocumentChunk[]): Promise<DocumentChunk[]> {
+  return new Promise((resolve, reject) => {
+    const worker = getWorker();
+
+    worker.onmessage = (e) => {
+      const { type, payload } = e.data;
+      if (type === 'PROCESSING_COMPLETE') {
+        resolve(payload);
+      } else if (type === 'PROCESSING_ERROR') {
+        reject(new Error(payload));
+      }
+    };
+
+    worker.postMessage({ type: 'PROCESS_DOCUMENT', payload: { chunks } });
+  });
+}
+
+
 // Main document processing function
 export async function processFile(
   file: File,
@@ -45,7 +74,7 @@ export async function processFile(
       documentId: crypto.randomUUID(),
       fileName: file.name,
     });
-    
+
     const chunks = [...textChunks, ...layoutChunks.map(chunk => ({
       ...chunk,
       documentId: textChunks[0].documentId
@@ -53,11 +82,9 @@ export async function processFile(
 
     onProgress(60);
 
-    // Step 5: Generate embeddings for chunks
-    const chunksWithEmbeddings = await processChunksWithEmbeddings(
-      chunks,
-      (subProgress) => onProgress(60 + subProgress * 0.3)
-    );
+    // Step 5: Generate embeddings for chunks using worker
+    const chunksWithEmbeddings = await processDocumentWithWorker(chunks);
+
 
     console.log('Chunks with embeddings:', chunksWithEmbeddings);
 
@@ -286,7 +313,7 @@ async function splitIntoChunks(
   return chunks;
 }
 
-// Process chunks with embeddings
+// Process chunks with embeddings -  This function is now largely handled by the worker
 async function processChunksWithEmbeddings(
   chunks: DocumentChunk[],
   onProgress: (progress: number) => void
@@ -297,7 +324,7 @@ async function processChunksWithEmbeddings(
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
     try {
-      // Generate embedding for chunk
+      //The embedding generation is now handled in the worker.
       const embedding = await generateEmbeddings(chunk.text);
 
       // Add embedding to chunk
