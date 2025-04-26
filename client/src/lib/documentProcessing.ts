@@ -6,6 +6,7 @@ import { processText } from './processors/textProcessor';
 import { saveDocument } from './storage';
 import { formatBytes, getFileExtension } from './utils';
 import { generateEmbeddings } from './languageProcessing';
+import { layoutProcessor } from './processors/layoutProcessor';
 import { insertDocument } from './duckdb';
 
 // Document processing worker
@@ -62,10 +63,8 @@ export async function processFile(
 
     // Process layout if document contains images
     let layoutChunks = [];
-    if (metadata.hasImages) {
-      layoutChunks = await layoutProcessor.processDocument(arrayBuffer);
-      onProgress(40);
-    }
+    layoutChunks = await layoutProcessor.processDocument(arrayBuffer);
+    onProgress(40);
 
     onProgress(50);
 
